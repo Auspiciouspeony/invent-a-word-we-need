@@ -26,14 +26,24 @@ def main() -> None:
     assert 1 <= len(text) <= 140, f"entry is {len(text)} characters"
     assert text.strip(), "entry must not be only white space"
     text.encode("utf-8")
-    os.makedirs("/output", exist_ok=True)
-    os.chmod("/output", 0o755)
+    # /output is a grader-provided mount owned by another user: never
+    # chmod the mount itself (EPERM as uid 65534 -> exit 1, which is
+    # exactly how round 1 failed). Create it only if missing, and
+    # tolerate any permission error on the directory.
+    try:
+        os.makedirs("/output", exist_ok=True)
+    except OSError:
+        pass
     path = "/output/entry.txt"
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write(text)
     # Outputs must be readable by every user (the grader collects them
-    # as another user): files 0644, folders 0755.
-    os.chmod(path, 0o644)
+    # as another user): files 0644, folders 0755. Chmod only the file
+    # we created, never the /output mount itself.
+    try:
+        os.chmod(path, 0o644)
+    except OSError:
+        pass
 
 
 if __name__ == "__main__":
